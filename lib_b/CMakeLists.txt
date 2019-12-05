@@ -1,0 +1,6 @@
+cmake_minimum_required (VERSION 3.7)
+project (lib_b C CXX)
+add_library(lib_b STATIC ./lib_b.cpp ./lib_b.h)
+target_include_directories(lib_b PUBLIC .)
+target_link_libraries(lib_b PUBLIC lib_a)
+target_link_libraries(lib_b PRIVATE -Wl,-force_load fake_2)
