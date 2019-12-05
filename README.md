@@ -26,3 +26,34 @@ Other things we've tried:
    ignores the dependencies between our 4 fake imported libraries.
 3. Use `target_link_options`: this doesn't apply the link options to a specific library but rather adds them in an
    arbitrary position on the link line.
+4. We can't put the `-Wl,-force_load` properties on the libraries themselves as we have other executables that use them
+   but do not require a force link.
+
+To see what happens do the following from this directory:
+
+```
+$ mkdir build
+$ cd build
+$ cmake ..
+$ VERBOSE=1 make
+```
+
+the link will fail as `libfake_X.a` aren't really static libraries but you can also see that the libraries are out of
+order and not correctly force-linked though we've said they must be. Specifically, I get the following liker line:
+
+```
+Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -isysroot
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk
+-mmacosx-version-min=10.14 -Wl,-search_paths_first -Wl,-headerpad_max_install_names  CMakeFiles/exe.dir/main.cpp.o  -o
+exe ../lib_b/liblib_b.a -Wl,-force_load ../../imported_libs/libfake_1.a -Wl,-force_load ../../imported_libs/libfake_2.a
+../lib_a/liblib_a.a -Wl,-force_load ../../imported_libs/libfake_4.a ../../imported_libs/libfake_3.a
+../../imported_libs/libfake_2.a ../../imported_libs/libfake_1.a
+```
+
+here we can see:
+
+1. `libfake_3.a` is not preceeded by a `-Wl,-force_load` though `lib_a/CMakeLists.txt` said it was necessary.
+2. The libraries are arranged in proper order on the link line however. But if you try experiments (1) or (2) above that
+   is no longer the case.
+
+
