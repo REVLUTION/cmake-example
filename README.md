@@ -1,17 +1,28 @@
-This is an example C++ project using CMake that issustrates an issue with passing linker flags to be applied
+This is an example C++ project using CMake that illustrates an issue with passing linker flags to be applied
 to specific libraries. What we really want is to be able to specify that certain external libraries are to be
 force-linked.
 
-Run the following to generate the make files:
+We have 4 fake imported static libraries that we want to link (that is pre-built 3rd party libraries). These are
+declared in the main `CMakeLists.txt`. There are dependencies between them which are declared via
+`set_target_properties` on each library. Since there are dependencies between them they should appear on the link line
+in a specific order.
+
+We have 2 libraries, `lib_a` and `lib_b`, that make use of some of these external libraries. They also require them to
+be force linked. So they contain lines like:
+
 ```
-cmake -H. -B/Users/derekseiple/Downloads/example/build -DCMAKE_BUILD_TYPE=Debug
+target_link_libraries(lib_a PUBLIC -Wl,-force_load fake_4)
 ```
 
-This is not intended to actually compile. Instead we are concerned with the Make files that are generated. Specifically the linker command that is generated to [link.txt](build/exe/CMakeFiles/exe.dir/link.txt).
+However, when we compile we see that some, but not all, libraries get the `-Wl,-force_load` applied. It seems CMake sees
+that as a separate library it can place anywhere rather than a modifier specific libraries.
 
-Note that this will create the following:
-```
-/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names  CMakeFiles/exe.dir/main.cpp.o  -o exe ../lib_b/liblib_b.a -Wl,-force_load /path/to/libfake_1.a -Wl,-force_load /path/to/libfake_2.a ../lib_a/liblib_a.a -Wl,-force_load /path/to/libfake_3.a /path/to/libfake_4.a 
-```
+Other things we've tried:
 
-We would expect `-Wl,-force_load` to show up in front of all 4 of the fake libraries. It does show up in front of  `/path/to/libfake_1.a` and `/path/to/libfake_2.a` which were specified in the [exe CMake](exe/CMakeLists.txt). But it only shows up once for the fake libraries specified in the [lib_a CMake](lib_a/CMakeLists.txt).
+1. Use `target_link_libraries(lib_a PUBLIC "-Wl,-force_load fake_4")`. This doesn't work because cmake doesn't expand
+   `fake_4` to it's declared library path.
+2. Use `target_link_libraries(lib_a PUBLIC "-Wl,-force_load $<TARGET_PROPERTY:fake_4,IMPORTED_LOCATION>")`. This doesn't
+   work because cmake doesn't know that this refers to the `fake_4` we declared in the root `CMakeLists.txt` so it
+   ignores the dependencies between our 4 fake imported libraries.
+3. Use `target_link_options`: this doesn't apply the link options to a specific library but rather adds them in an
+   arbitrary position on the link line.

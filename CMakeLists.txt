@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.7)
 project(cpp C CXX)
 
-
+# 4 imported libraries. Note that there are dependencies between them.
 add_library(fake_1 STATIC IMPORTED GLOBAL)
 set_target_properties(fake_1
 PROPERTIES
